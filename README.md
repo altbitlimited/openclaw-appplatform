@@ -1,34 +1,44 @@
-# Clawdbot App Platform Image
+# Moltbot App Platform Image
 
-Pre-built Docker image for deploying [Clawdbot](https://github.com/clawdbot/clawdbot) on DigitalOcean App Platform.
+Pre-built Docker image for deploying [Moltbot](https://github.com/moltbot/moltbot) on DigitalOcean App Platform with Tailscale networking.
 
-[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/digitalocean-labs/clawdbot-appplatform/tree/main)
+[![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/digitalocean-labs/moltbot-appplatform/tree/main)
 
 ## Features
 
-- **Fast boot** (~30 seconds)
-- **Built from source** with latest features (device auth bypass, Gradient AI)
-- **Pre-configured** for App Platform (trusted proxies, Control UI access)
+- **Fast boot** (~30 seconds vs 5-10 min source build)
+- **Private networking** via Tailscale - secure access without public exposure
 - **Optional persistence** via Litestream + DO Spaces
+- **Gradient AI support** - Use DigitalOcean's serverless AI inference
+- **SSH access** - Optional SSH server for remote access
 - **Multi-arch** support (amd64/arm64)
+- **s6-overlay** - Proper process supervision with drop-in customization
 
 ## Quick Start
 
 1. Click the **Deploy to DO** button above
-2. Set `SETUP_PASSWORD` when prompted
+2. Set required environment variables (see below)
 3. Wait for deployment (~1 minute)
-4. Open `https://<your-app>.ondigitalocean.app/setup` to complete setup
+4. Access via `https://moltbot.<your-tailnet>.ts.net`
 
 ## Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│           GHCR Image: ghcr.io/bikramkgupta/                 │
-│                    clawdbot-appplatform                          │
-│  ┌───────────┐  ┌───────────┐  ┌────────────────────────────┐   │
-│  │ Node 24   │  │ Clawdbot  │  │ Litestream (optional)      │   │
-│  │ (slim)    │  │ (latest)  │  │ SQLite → DO Spaces backup  │   │
-│  └───────────┘  └───────────┘  └────────────────────────────┘   │
+│                     moltbot-appplatform                          │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ s6-overlay - Process supervision and init system            ││
+│  └─────────────────────────────────────────────────────────────┘│
+│  ┌─────────────┐  ┌───────────┐  ┌──────────────────────────┐   │
+│  │ Ubuntu      │  │ Moltbot   │  │ Litestream (optional)    │   │
+│  │ Noble+Node  │  │ (latest)  │  │ SQLite → DO Spaces       │   │
+│  └─────────────┘  └───────────┘  └──────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ Tailscale - Private networking via tailnet (required)      ││
+│  └─────────────────────────────────────────────────────────────┘│
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ SSH Server (optional) - Remote access via ENABLE_SSH=true  ││
+│  └─────────────────────────────────────────────────────────────┘│
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -38,21 +48,33 @@ Pre-built Docker image for deploying [Clawdbot](https://github.com/clawdbot/claw
 
 | Variable | Description |
 |----------|-------------|
+| `TS_AUTHKEY` | Tailscale auth key for joining your tailnet |
 | `SETUP_PASSWORD` | Password for the web setup wizard |
 
 ### Recommended
 
 | Variable | Description |
 |----------|-------------|
-| `CLAWDBOT_GATEWAY_TOKEN` | Admin token for gateway API access |
+| `TS_HOSTNAME` | Hostname on your tailnet (default: container hostname) |
+| `MOLTBOT_GATEWAY_TOKEN` | Admin token for gateway API access |
 
-### Optional (Model Provider)
+### Optional (SSH)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ENABLE_SSH` | Start SSH server on port 22 | `false` |
+
+### Optional (Gradient AI)
 
 | Variable | Description |
 |----------|-------------|
-| `GRADIENT_API_KEY` | DigitalOcean Gradient AI Model Access Key for serverless inference |
+| `GRADIENT_API_KEY` | DigitalOcean Gradient AI Model Access Key |
 
-See [Gradient AI Setup](#gradient-ai-setup) for configuration details.
+When set, adds Gradient as a model provider with access to:
+- Llama 3.3 70B Instruct
+- Claude 4.5 Sonnet
+- Claude Opus 4.5
+- DeepSeek R1 Distill Llama 70B
 
 ### Optional (Persistence)
 
@@ -63,7 +85,7 @@ Without these, the app runs in ephemeral mode - state is lost on redeploy.
 | `LITESTREAM_ACCESS_KEY_ID` | DO Spaces access key | |
 | `LITESTREAM_SECRET_ACCESS_KEY` | DO Spaces secret key | |
 | `SPACES_ENDPOINT` | Spaces endpoint | `tor1.digitaloceanspaces.com` |
-| `SPACES_BUCKET` | Spaces bucket name | `my-clawdbot-backup` |
+| `SPACES_BUCKET` | Spaces bucket name | `my-moltbot-backup` |
 
 ## Resource Requirements
 
@@ -94,8 +116,8 @@ Edit the `region` field in `app.yaml` to change.
 
 ```bash
 # Clone and deploy
-git clone https://github.com/digitalocean-labs/clawdbot-appplatform
-cd clawdbot-appplatform
+git clone https://github.com/digitalocean-labs/moltbot-appplatform
+cd moltbot-appplatform
 
 # Validate spec
 doctl apps spec validate app.yaml
@@ -105,6 +127,80 @@ doctl apps create --spec app.yaml
 
 # Set secrets in the DO dashboard
 ```
+
+## Customizing the Image
+
+The `rootfs/` directory allows you to add or override any files in the container. Files are copied to `/` at the end of the Docker build.
+
+This image uses [s6-overlay](https://github.com/just-containers/s6-overlay) for process supervision, which provides two ways to add custom logic:
+
+### Directory Structure
+
+```
+rootfs/
+├── etc/
+│   ├── cont-init.d/               # One-time initialization scripts
+│   │   └── 30-my-setup            # Runs once at startup
+│   ├── services.d/                # Long-running services (supervised)
+│   │   └── my-daemon/
+│   │       └── run                # Daemon start script
+│   ├── ssh/
+│   │   └── sshd_config.d/
+│   │       └── 10-custom.conf     → /etc/ssh/sshd_config.d/10-custom.conf
+│   └── motd                        → /etc/motd
+└── home/
+    └── moltbot/
+        └── .bashrc                 → /home/moltbot/.bashrc
+```
+
+### Initialization Scripts (`cont-init.d`)
+
+One-time scripts that run at container startup before services start. Scripts run in alphanumeric order.
+
+**Example:** `rootfs/etc/cont-init.d/30-install-tools`
+
+```bash
+#!/command/with-contenv bash
+# Install additional tools
+apt-get update && apt-get install -y vim htop
+```
+
+**Notes:**
+- Use `#!/command/with-contenv bash` to inherit environment variables
+- Scripts run as root
+- Built-in scripts use `10-` and `20-` prefixes; use `30-` or higher for custom scripts
+
+### Custom Services (`services.d`)
+
+Long-running daemons that s6 supervises and restarts if they crash.
+
+**Example:** `rootfs/etc/services.d/my-daemon/run`
+
+```bash
+#!/command/with-contenv bash
+exec my-daemon --foreground
+```
+
+**Notes:**
+- The `run` script must `exec` the daemon (not fork to background)
+- s6 automatically restarts the service if it exits
+- Add a `finish` script for cleanup on shutdown
+- Add a `down` file to disable the service by default
+
+### Built-in Services
+
+| Service | Description |
+|---------|-------------|
+| `tailscale` | Tailscale daemon (required) |
+| `moltbot` | Moltbot gateway |
+| `sshd` | SSH server (if `ENABLE_SSH=true`) |
+| `backup` | Periodic state backup (if persistence configured) |
+
+### General Notes
+
+- Files are copied with `COPY rootfs/ /` which preserves directory structure
+- Existing files in the container will be overwritten
+- File permissions from the source are preserved
 
 ## Setting Up Persistence
 
@@ -116,12 +212,13 @@ App Platform doesn't have persistent volumes, so this image uses DO Spaces for s
 |-----------|--------------|-------------|
 | Memory search index | Litestream (real-time) | SQLite database for vector search |
 | Config, devices, sessions | S3 backup (every 5 min) | JSON state files |
+| Tailscale state | S3 backup (every 5 min) | Auth keys and node identity |
 
 ### Setup Steps
 
 1. **Create a Spaces bucket** in the same region as your app
    - Go to **Spaces Object Storage** → **Create Bucket**
-   - Name: e.g., `clawdbot-backup`
+   - Name: e.g., `moltbot-backup`
    - Region: match your app (e.g., `tor1` for Toronto)
 
 2. **Create Spaces access keys**
@@ -141,75 +238,29 @@ App Platform doesn't have persistent volumes, so this image uses DO Spaces for s
 
 On startup:
 1. Restores JSON state backup from Spaces (if exists)
-2. Restores SQLite memory database via Litestream (if exists)
-3. Starts the gateway
+2. Restores Tailscale state from Spaces (if exists)
+3. Restores SQLite memory database via Litestream (if exists)
+4. Starts the gateway
 
 During operation:
 - Litestream continuously replicates SQLite changes (1s sync interval)
-- JSON state is backed up every 5 minutes
+- JSON state and Tailscale state are backed up every 5 minutes
 - On graceful shutdown (SIGTERM), final state backup is saved
 
-## Control UI Access
+## Tailscale Setup
 
-The image comes pre-configured with password authentication mode and `trustedProxies: ["0.0.0.0/0"]`. This is necessary because App Platform runs behind Cloudflare's reverse proxy.
+Tailscale is required for networking. To set up:
 
-Access the Control UI at:
-```
-https://<your-app>.ondigitalocean.app/
-```
-
-You'll be prompted to enter your `SETUP_PASSWORD` to authenticate.
-
-> **Security Note:** The password is your `SETUP_PASSWORD` environment variable. Keep it secret. HTTPS is provided by App Platform via Cloudflare.
-
-## Gradient AI Setup
-
-[DigitalOcean Gradient](https://www.digitalocean.com/products/gradient) provides serverless AI inference with models like Llama 3.3, Claude, and GPT-4o. To use Gradient as your model provider:
-
-### 1. Create a Model Access Key
-
-1. Go to [Gradient Serverless Inference](https://cloud.digitalocean.com/gen-ai/serverless-inference)
-2. Click **Create model access key**
-3. Name it (e.g., `clawdbot`) and save the secret key
-
-Or via API:
-```bash
-curl -X POST "https://api.digitalocean.com/v2/gen-ai/models/api_keys" \
-  -H "Authorization: Bearer $DIGITALOCEAN_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"name": "clawdbot"}'
-```
-
-### 2. Add Environment Variable
-
-Add `GRADIENT_API_KEY` to your App Platform app (as a secret).
-
-### 3. Done
-
-The image comes pre-configured for Gradient AI with `llama3.3-70b-instruct` as the default model. No additional configuration needed.
-
-The default config (`clawdbot.default.json`) includes:
-- Gradient provider at `https://inference.do-ai.run/v1`
-- API key via `${GRADIENT_API_KEY}` environment variable
-- Default model: `gradient/llama3.3-70b-instruct`
-
-### Available Models
-
-| Model ID | Description |
-|----------|-------------|
-| `llama3.3-70b-instruct` | Meta Llama 3.3 70B (general purpose) |
-| `llama3-8b-instruct` | Meta Llama 3 8B (faster, lower cost) |
-| `anthropic-claude-opus-4` | Claude Opus 4 |
-| `anthropic-claude-sonnet-4` | Claude Sonnet 4 |
-| `openai-gpt-4o` | GPT-4o |
-
-Run `doctl genai list-models` or check the [Gradient dashboard](https://cloud.digitalocean.com/gen-ai/serverless-inference) for the full list.
+1. Create a Tailscale auth key at https://login.tailscale.com/admin/settings/keys
+2. Set `TS_AUTHKEY` environment variable
+3. Optionally set `TS_HOSTNAME` for a custom hostname
+4. Deploy as a **worker** (use `.do/deploy.template.yaml`)
+5. Access via `https://moltbot.<your-tailnet>.ts.net`
 
 ## Documentation
 
-- [Full deployment guide](https://docs.clawd.bot/digitalocean)
-- [Clawdbot documentation](https://docs.clawd.bot)
-- [Gradient AI documentation](https://docs.digitalocean.com/products/gradient-ai-platform/)
+- [Full deployment guide](https://docs.molt.bot/digitalocean)
+- [Moltbot documentation](https://docs.molt.bot)
 
 ## License
 

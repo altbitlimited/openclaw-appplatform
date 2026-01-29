@@ -1,6 +1,8 @@
 name: Build and Push to GHCR
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
   schedule:
     # Rebuild weekly to pick up latest Clawdbot version
@@ -8,7 +10,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: bikramkgupta/clawdbot-appplatform
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -31,8 +33,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: bikramkgupta
-          password: ${{ secrets.GHCR_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Extract metadata
         id: meta

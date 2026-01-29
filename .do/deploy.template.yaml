@@ -5,56 +5,59 @@ spec:
   features:
   - buildpack-stack=ubuntu-22
   ingress: {}
-  name: moltbot
-  region: tor
+  name: clawdbot
+  region: atl
   workers:
   - dockerfile_path: /Dockerfile
     envs:
-    # Required
-    - key: TS_AUTHKEY
-      scope: RUN_TIME
-      type: SECRET
     - key: SETUP_PASSWORD
       scope: RUN_TIME
       type: SECRET
-    - key: MOLTBOT_STATE_DIR
+      value: elan
+    - key: CLAWDBOT_STATE_DIR
       scope: RUN_AND_BUILD_TIME
-      value: /data/.moltbot
-    - key: MOLTBOT_WORKSPACE_DIR
+      value: /data/.clawdbot
+    - key: CLAWDBOT_WORKSPACE_DIR
       scope: RUN_AND_BUILD_TIME
       value: /data/workspace
-    # Tailscale configuration
-    - key: TS_HOSTNAME
+    - key: SPACES_ENDPOINT
       scope: RUN_AND_BUILD_TIME
-      value: moltbot
+      value: atl1.digitaloceanspaces.com
+    - key: XXXSPACES_BUCKET
+      scope: RUN_AND_BUILD_TIME
+      value: clawdbot
+    - key: LITESTREAM_SECRET_ACCESS_KEY
+      scope: RUN_AND_BUILD_TIME
+      type: SECRET
+      value: xxx
+    - key: LITESTREAM_ACCESS_KEY_ID
+      scope: RUN_AND_BUILD_TIME
+      type: SECRET
+      value: xxx
+    - key: TS_ENABLE_HEALTH_CHECK
+      scope: RUN_AND_BUILD_TIME
+      value: "true"
+    - key: TS_LOCAL_ADDR_PORT
+      scope: RUN_AND_BUILD_TIME
+      value: '[::]:9002'
+    - key: TS_AUTHKEY
+      scope: RUN_TIME
+      type: SECRET
+      value: xxx
     - key: TS_USERSPACE
       scope: RUN_AND_BUILD_TIME
       value: "true"
+    - key: TS_HOSTNAME
+      scope: RUN_AND_BUILD_TIME
+      value: clawdbot
     - key: TS_SOCKET
       scope: RUN_AND_BUILD_TIME
       value: /tmp/tailscaled.sock
-    # Optional: Uncomment for Spaces persistence
-    # - key: LITESTREAM_ACCESS_KEY_ID
-    #   scope: RUN_TIME
-    #   type: SECRET
-    # - key: LITESTREAM_SECRET_ACCESS_KEY
-    #   scope: RUN_TIME
-    #   type: SECRET
-    # - key: SPACES_ENDPOINT
-    #   scope: RUN_AND_BUILD_TIME
-    #   value: tor1.digitaloceanspaces.com
-    # - key: SPACES_BUCKET
-    #   scope: RUN_AND_BUILD_TIME
-    #   value: moltbot-backup
-    # Optional: Uncomment for Gradient AI
-    # - key: GRADIENT_API_KEY
-    #   scope: RUN_TIME
-    #   type: SECRET
     github:
-      branch: main
+      branch: elan
       deploy_on_push: true
-      repo: digitalocean-labs/moltbot-appplatform
+      repo: ElanHasson/clawdbot-appplatform
     instance_count: 1
     instance_size_slug: apps-s-2vcpu-4gb
-    name: moltbot
+    name: clawdbot
     source_dir: /

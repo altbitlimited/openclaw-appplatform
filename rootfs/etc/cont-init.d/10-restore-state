@@ -1,8 +1,0 @@
-#!/command/with-contenv bash
-# Restore state from restic backup
-
-# Ensure directories exist
-mkdir -p "$MOLTBOT_STATE_DIR" "$MOLTBOT_WORKSPACE_DIR" "$TS_STATE_DIR"
-
-# Run unified restore script
-/usr/local/bin/restic-restore

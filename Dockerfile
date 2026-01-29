@@ -1,124 +1,76 @@
 FROM tailscale/tailscale:stable AS tailscale
 
-FROM ubuntu:noble
 
-# Copy Tailscale binaries
-# real_tailscale is used because the rootfs/usr/local/bin/tailscale script is a wrapper that injects the socket path for tailscale CLI
+FROM node:24-slim
+
 COPY --from=tailscale /usr/local/bin/tailscale /usr/local/bin/real_tailscale
 COPY --from=tailscale /usr/local/bin/tailscaled /usr/local/bin/tailscaled
 COPY --from=tailscale /usr/local/bin/containerboot /usr/local/bin/containerboot
 
-ARG TARGETARCH
-ARG MOLTBOT_VERSION=latest
+COPY tailscale /usr/local/bin/tailscale
+
+ARG TARGETARCH=x86_64
+ARG CLAWDBOT_VERSION=latest
 ARG LITESTREAM_VERSION=0.5.6
-ARG S6_OVERLAY_VERSION=3.2.1.0
-ARG NODE_MAJOR=24
 
-ENV MOLTBOT_STATE_DIR=/data/.moltbot \
-    MOLTBOT_WORKSPACE_DIR=/data/workspace \
-    TS_STATE_DIR=/data/tailscale \
-    NODE_ENV=production \
-    DEBIAN_FRONTEND=noninteractive \
-    S6_KEEP_ENV=1 \
-    S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
-    S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0
+ENV CLAWDBOT_STATE_DIR=/data/.clawdbot \
+    CLAWDBOT_WORKSPACE_DIR=/data/workspace \
+    NODE_ENV=production
 
-# Install OS deps + Node.js + sshd + Litestream + restic + s6-overlay
+# Install OS deps + Litestream + s3cmd for state backup
+# Note: Litestream 0.5.x uses x86_64 (not amd64) and no 'v' prefix in filename
 RUN set -eux; \
     apt-get update; \
     apt-get install -y --no-install-recommends \
-      ca-certificates \
-      wget \
-      curl \
-      gnupg \
-      openssl \
-      jq \
-      sudo \
-      git \
-      bzip2 \
-      openssh-server \
-      xz-utils; \
-    # Install Node.js from NodeSource
-    mkdir -p /etc/apt/keyrings; \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg; \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" > /etc/apt/sources.list.d/nodesource.list; \
-    apt-get update; \
-    apt-get install -y nodejs; \
-    # Install Litestream
+    ca-certificates \
+    wget \
+    vim \
+    jq \
+    curl \
+    openssl \
+    sudo \
+    procps \
+    build-essential \
+    git \
+    s3cmd \
+    python3; \
     LITESTREAM_ARCH="$( [ "$TARGETARCH" = "arm64" ] && echo arm64 || echo x86_64 )"; \
     wget -O /tmp/litestream.deb \
-      https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-${LITESTREAM_VERSION}-linux-${LITESTREAM_ARCH}.deb; \
+    https://github.com/benbjohnson/litestream/releases/download/v${LITESTREAM_VERSION}/litestream-${LITESTREAM_VERSION}-linux-${LITESTREAM_ARCH}.deb; \
     dpkg -i /tmp/litestream.deb; \
     rm /tmp/litestream.deb; \
-    # Install restic
-    RESTIC_ARCH="$( [ "$TARGETARCH" = "arm64" ] && echo arm64 || echo amd64 )"; \
-    wget -q -O /tmp/restic.bz2 \
-      https://github.com/restic/restic/releases/download/v0.17.3/restic_0.17.3_linux_${RESTIC_ARCH}.bz2; \
-    bunzip2 /tmp/restic.bz2; \
-    mv /tmp/restic /usr/local/bin/restic; \
-    chmod +x /usr/local/bin/restic; \
-    # Install yq for YAML parsing
-    YQ_ARCH="$( [ "$TARGETARCH" = "arm64" ] && echo arm64 || echo amd64 )"; \
-    wget -q -O /usr/local/bin/yq \
-      https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_${YQ_ARCH}; \
-    chmod +x /usr/local/bin/yq; \
-    # Install s6-overlay
-    S6_ARCH="$( [ "$TARGETARCH" = "arm64" ] && echo aarch64 || echo x86_64 )"; \
-    wget -O /tmp/s6-overlay-noarch.tar.xz \
-      https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-noarch.tar.xz; \
-    wget -O /tmp/s6-overlay-arch.tar.xz \
-      https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}/s6-overlay-${S6_ARCH}.tar.xz; \
-    tar -C / -Jxpf /tmp/s6-overlay-noarch.tar.xz; \
-    tar -C / -Jxpf /tmp/s6-overlay-arch.tar.xz; \
-    rm /tmp/s6-overlay-*.tar.xz; \
-    # Setup SSH
-    mkdir -p /run/sshd; \
-    # Cleanup
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-# Create non-root user with sudo access and SSH capability
-RUN useradd -m -d /home/moltbot -s /bin/bash moltbot \
-    && mkdir -p "${MOLTBOT_STATE_DIR}" "${MOLTBOT_WORKSPACE_DIR}" "${TS_STATE_DIR}" \
-    && chown -R moltbot:moltbot /data \
-    && echo 'moltbot ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/moltbot \
-    && chmod 440 /etc/sudoers.d/moltbot \
-    && mkdir -p /home/moltbot/.ssh \
-    && chmod 700 /home/moltbot/.ssh \
-    && chown moltbot:moltbot /home/moltbot/.ssh
+COPY entrypoint.sh /entrypoint.sh
+COPY litestream.yml /etc/litestream.yml
+RUN chmod +x /entrypoint.sh
 
-# Homebrew and pnpm paths
+# Create non-root user with home directory, add to sudoers (NOPASSWD)
+RUN useradd -r -m -d /home/clawdbot clawdbot \
+    && mkdir -p "${CLAWDBOT_STATE_DIR}" && mkdir -p "${CLAWDBOT_WORKSPACE_DIR}" \
+    && chown -R clawdbot:clawdbot /data "${CLAWDBOT_STATE_DIR}" "${CLAWDBOT_WORKSPACE_DIR}" \
+    && echo 'clawdbot ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/clawdbot \
+    && chmod 440 /etc/sudoers.d/clawdbot
+
+
+
+# Add Homebrew and pnpm to PATH
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:$PATH"
-ENV PNPM_HOME="/home/moltbot/.local/share/pnpm"
+ENV PNPM_HOME="/home/clawdbot/.local/share/pnpm"
 ENV PATH="${PNPM_HOME}:${PATH}"
 
-# Create pnpm directory
-RUN mkdir -p ${PNPM_HOME} && chown -R moltbot:moltbot /home/moltbot/.local
+# Create pnpm global bin directory with correct ownership
+RUN mkdir -p ${PNPM_HOME} && chown -R clawdbot:clawdbot /home/clawdbot/.local
 
-USER moltbot
+# Switch to clawdbot for Homebrew install (must run as non-root)
+USER clawdbot
 
-# Install Homebrew (must run as non-root)
+# Install Homebrew
 RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-# Install pnpm and moltbot
-RUN brew install pnpm \
-    && pnpm add -g "moltbot@${MOLTBOT_VERSION}"
+# Install pnpm via Homebrew and clawdbot globally
+RUN NONINTERACTIVE=1 brew install pnpm \
+    && pnpm add -g "clawdbot@${CLAWDBOT_VERSION}"
 
-# Switch back to root for final overlay
-USER root
-
-# Apply rootfs overlay - allows users to add/override any files
-# This is done last so user customizations take precedence
-COPY rootfs/ /
-
-# Fix ownership for any files copied to moltbot's home
-RUN chown -R moltbot:moltbot /home/moltbot 2>/dev/null || true
-
-# Generate initial package selections list (for restore capability)
-RUN dpkg --get-selections > /etc/moltbot/dpkg-selections
-
-# Expose ports: 8080 for LAN mode, 22 for SSH
-EXPOSE 8080 22
-
-# s6-overlay init (must run as root, services drop privileges as needed)
-ENTRYPOINT ["/init"]
+ENTRYPOINT ["/entrypoint.sh"]

@@ -1,5 +1,0 @@
-#!/command/with-contenv bash
-# Tailscale daemon (required for networking)
-
-echo "[tailscale] Starting Tailscale daemon..."
-exec /usr/local/bin/containerboot

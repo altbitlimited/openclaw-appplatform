@@ -1,6 +1,6 @@
-# AI-Assisted Moltbot Setup
+# AI-Assisted OpenClaw Setup
 
-This guide enables AI coding assistants (Claude Code, Cursor, Codex, Gemini, etc.) to deploy and configure Moltbot on DigitalOcean App Platform.
+This guide enables AI coding assistants (Claude Code, Cursor, Codex, Gemini, etc.) to deploy and configure OpenClaw (formerly Moltbot) on DigitalOcean App Platform.
 
 ## Overview
 

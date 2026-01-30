@@ -1,8 +1,8 @@
-# Moltbot App Platform Deployment
+# OpenClaw App Platform Deployment
 
 ## Overview
 
-This repository contains the Docker configuration and deployment templates for running [Moltbot](https://github.com/moltbot/moltbot) on DigitalOcean App Platform with Tailscale networking.
+This repository contains the Docker configuration and deployment templates for running [OpenClaw](https://github.com/moltbot/moltbot) (formerly Moltbot) on DigitalOcean App Platform with Tailscale networking.
 
 ## Key Files
 

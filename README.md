@@ -1,6 +1,8 @@
-# Moltbot on DigitalOcean App Platform
+# OpenClaw on DigitalOcean App Platform
 
-Deploy [Moltbot](https://github.com/moltbot/moltbot) - a multi-channel AI messaging gateway - on DigitalOcean App Platform in minutes.
+> **Note:** Moltbot and ClawdBot have been rebranded as **OpenClaw**. The underlying CLI and paths still use the original names for backward compatibility.
+
+Deploy [OpenClaw](https://github.com/moltbot/moltbot) (formerly Moltbot) - a multi-channel AI messaging gateway - on DigitalOcean App Platform in minutes.
 
 [![Deploy to DO](https://www.deploytodo.com/do-btn-blue.svg)](https://cloud.digitalocean.com/apps/new?repo=https://github.com/digitalocean-labs/clawdbot-appplatform/tree/main)
 

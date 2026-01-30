@@ -1,4 +1,4 @@
-# Moltbot CLI Cheat Sheet
+# OpenClaw CLI Cheat Sheet
 
 ## The `mb` Command
 

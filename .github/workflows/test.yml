@@ -139,13 +139,16 @@ jobs:
           DO_SPACES_ACCESS_KEY_ID: ${{ secrets.DO_SPACES_ACCESS_KEY_ID }}
           DO_SPACES_SECRET_ACCESS_KEY: ${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}
         run: |
-          for script in $(ls tests/${{ matrix.config }}/*.sh 2>/dev/null | sort); do
+          scripts=($(ls tests/${{ matrix.config }}/*.sh 2>/dev/null | sort))
+          total=${#scripts[@]}
+          current=0
+          for script in "${scripts[@]}"; do
             if [ -x "$script" ]; then
-              echo ""
-              echo "========================================"
-              echo "Running: $script"
-              echo "========================================"
-              "$script" ${{ matrix.config }} || exit 1
+              current=$((current + 1))
+              name=$(basename "$script")
+              echo "::group::[$current/$total] $name"
+              "$script" ${{ matrix.config }} || { echo "::endgroup::"; exit 1; }
+              echo "::endgroup::"
             fi
           done
 

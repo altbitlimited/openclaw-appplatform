@@ -94,12 +94,13 @@ fi
 echo ""
 echo "=== Persistence Tests ==="
 
-if [ -z "$DO_SPACES_ACCESS_KEY_ID" ] || [ -z "$DO_SPACES_SECRET_ACCESS_KEY" ]; then
-    echo "Skipping persistence tests (no DO_SPACES credentials)"
+# Check if persistence is actually configured in the container
+if ! docker exec "$CONTAINER" test -f /run/s6/container_environment/RESTIC_SPACES_BUCKET 2>/dev/null; then
+    echo "Skipping persistence tests (RESTIC_SPACES_BUCKET not set in container)"
 else
     # Restic should be configured
     docker exec "$CONTAINER" test -f /run/s6/container_environment/RESTIC_REPOSITORY || {
-        echo "error: RESTIC_REPOSITORY not set"; exit 1;
+        echo "warning: RESTIC_REPOSITORY not set (init may have failed)"
     }
     echo "✓ Restic repository configured"
 

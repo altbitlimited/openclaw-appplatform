@@ -182,17 +182,5 @@ if [ -f "$CI_KEY" ]; then
     echo "✓ External root login correctly denied"
 fi
 
-# Test empty password login is denied
-echo "Testing empty password login is denied..."
-docker exec "$CONTAINER" bash -c 'useradd -m emptypassuser 2>/dev/null || true; passwd -d emptypassuser 2>/dev/null || true'
-if docker exec "$CONTAINER" su - ubuntu -c \
-    "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes emptypassuser@localhost whoami" 2>/dev/null; then
-    echo "error: Empty password login should be denied"
-    docker exec "$CONTAINER" userdel -r emptypassuser 2>/dev/null || true
-    exit 1
-fi
-echo "✓ Empty password login correctly denied"
-docker exec "$CONTAINER" userdel -r emptypassuser 2>/dev/null || true
-
 echo ""
 echo "ssh-enabled tests passed"

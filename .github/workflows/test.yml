@@ -11,26 +11,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      test-matrix: ${{ steps.list-tests.outputs.matrix }}
+      configs: ${{ steps.list-configs.outputs.configs }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: List test scripts
-        id: list-tests
+      - name: List test configurations
+        id: list-configs
         run: |
-          matrix='{"include":['
-          first=true
-          for env in example_configs/*.env; do
-            config=$(basename "$env" .env)
-            for script in $(ls tests/$config/*.sh 2>/dev/null | sort); do
-              [ "$first" = true ] && first=false || matrix+=','
-              matrix+="{\"config\":\"$config\",\"script\":\"$(basename $script)\"}"
-            done
-          done
-          matrix+=']}'
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
-          echo "Found test matrix: $matrix"
+          configs=$(ls -1 example_configs/*.env | xargs -n1 basename | sed 's/\.env$//' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "configs=$configs" >> $GITHUB_OUTPUT
+          echo "Found configs: $configs"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -59,7 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix: ${{ fromJson(needs.build.outputs.test-matrix) }}
+      matrix:
+        config: ${{ fromJson(needs.build.outputs.configs) }}
 
     steps:
       - name: Checkout repository
@@ -142,13 +134,20 @@ jobs:
             exit 1
           fi
 
-      - name: Run ${{ matrix.script }}
+      - name: Run test scripts
         env:
           DO_SPACES_ACCESS_KEY_ID: ${{ secrets.DO_SPACES_ACCESS_KEY_ID }}
           DO_SPACES_SECRET_ACCESS_KEY: ${{ secrets.DO_SPACES_SECRET_ACCESS_KEY }}
         run: |
-          echo "Running tests/${{ matrix.config }}/${{ matrix.script }}"
-          ./tests/${{ matrix.config }}/${{ matrix.script }} ${{ matrix.config }}
+          for script in $(ls tests/${{ matrix.config }}/*.sh 2>/dev/null | sort); do
+            if [ -x "$script" ]; then
+              echo ""
+              echo "========================================"
+              echo "Running: $script"
+              echo "========================================"
+              "$script" ${{ matrix.config }} || exit 1
+            fi
+          done
 
       - name: Dump final container state
         if: always()

@@ -145,14 +145,17 @@ for target_user in ubuntu root; do
     SSH_CMD="ssh $SSH_OPTS $target_user@localhost 'motd && ssh $SSH_OPTS root@localhost motd'"
     SSH_OUTPUT=$(echo "$SSH_CMD" | timeout 60 doctl apps console "$APP_ID" "$COMPONENT_NAME" 2>/dev/null | tr -d '\r') || SSH_OUTPUT="SSH_FAILED"
 
+    # Dump full motd output
+    echo "=== motd output from $target_user ==="
+    echo "$SSH_OUTPUT"
+    echo "=== end motd ==="
+
     # Check for motd output (should appear twice - once per SSH hop)
     MOTD_COUNT=$(echo "$SSH_OUTPUT" | grep -c "Welcome\|openclaw" || true)
     if [ "$MOTD_COUNT" -ge 2 ]; then
         echo "✓ Nested SSH from $target_user works (motd appeared $MOTD_COUNT times)"
-        echo "$SSH_OUTPUT" | head -30
     else
         echo "error: Nested SSH from $target_user failed (motd count: $MOTD_COUNT)"
-        echo "$SSH_OUTPUT"
         exit 1
     fi
 done

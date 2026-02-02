@@ -184,7 +184,7 @@ apply_permissions() {
     # Check if glob pattern matches anything
     local matched=false
     case "$path" in
-      *\*)
+      *'*'*)
         # shellcheck disable=SC2086
         for _ in $path; do matched=true; break; done
         if [[ "$matched" == "false" ]]; then
@@ -197,7 +197,7 @@ apply_permissions() {
     # Apply mode
     if [[ -n "$mode" ]]; then
       case "$path" in
-        *\*) chmod "$mode" $path 2>/dev/null || true ;;
+        *'*'*) chmod "$mode" $path 2>/dev/null || true ;;
         *) chmod "$mode" "$path" 2>/dev/null || true ;;
       esac
     fi
@@ -209,7 +209,7 @@ apply_permissions() {
       owner="${owner%:}"  # Remove trailing : if no group
       if [[ -n "$owner" ]]; then
         case "$path" in
-          *\*) chown "$owner" $path 2>/dev/null || true ;;
+          *'*'*) chown "$owner" $path 2>/dev/null || true ;;
           *) chown "$owner" "$path" 2>/dev/null || true ;;
         esac
       fi

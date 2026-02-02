@@ -98,7 +98,7 @@ jobs:
         if: contains(matrix.config, 'ssh')
         uses: digitalocean/action-doctl@v2
         with:
-          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
 
       - name: Install s3cmd
         if: matrix.config == 'persistence-enabled'

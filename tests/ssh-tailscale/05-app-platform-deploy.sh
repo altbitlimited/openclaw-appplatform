@@ -88,39 +88,63 @@ if [ -z "$APP_ID" ]; then
 fi
 echo "✓ Created app: $APP_ID"
 
-# Wait for app to be created (not necessarily deployed)
-echo "Waiting for app to be registered..."
-for i in {1..30}; do
+# Wait for app to be fully deployed (ACTIVE status)
+echo "Waiting for app deployment (this may take several minutes)..."
+DEPLOY_TIMEOUT=300  # 5 minutes
+DEPLOY_START=$(date +%s)
+
+while true; do
+    ELAPSED=$(($(date +%s) - DEPLOY_START))
     APP_STATUS=$(doctl apps get "$APP_ID" --format ActiveDeployment.Phase --no-header 2>/dev/null || echo "UNKNOWN")
-    echo "  Status: $APP_STATUS"
+    echo "  [$ELAPSED s] Status: $APP_STATUS"
 
     case "$APP_STATUS" in
-        PENDING_BUILD|BUILDING|PENDING_DEPLOY|DEPLOYING)
-            echo "✓ App is being deployed (status: $APP_STATUS)"
-            break
-            ;;
         ACTIVE)
             echo "✓ App deployed successfully"
             break
             ;;
         ERROR|CANCELED)
             echo "error: App deployment failed with status: $APP_STATUS"
-            doctl apps get "$APP_ID" --format ActiveDeployment.Progress 2>/dev/null || true
+            doctl apps logs "$APP_ID" --type=build 2>/dev/null | tail -50 || true
             exit 1
             ;;
     esac
 
-    if [ $i -eq 30 ]; then
-        echo "warning: Timed out waiting for deployment to start"
-        break
+    if [ $ELAPSED -ge $DEPLOY_TIMEOUT ]; then
+        echo "error: Deployment timed out after ${DEPLOY_TIMEOUT}s"
+        doctl apps logs "$APP_ID" --type=build 2>/dev/null | tail -50 || true
+        exit 1
     fi
-    sleep 5
+    sleep 10
 done
 
 # Get app info
 echo ""
 echo "App details:"
 doctl apps get "$APP_ID" --format ID,DefaultIngress,ActiveDeployment.Phase 2>/dev/null || true
+
+# Get component name for console access
+COMPONENT_NAME=$(doctl apps get "$APP_ID" --format Spec.Workers[0].Name --no-header 2>/dev/null || echo "$APP_NAME")
+echo "Component: $COMPONENT_NAME"
+
+# Test app via console - verify SSH is running
+echo ""
+echo "Testing app via console..."
+CONSOLE_OUTPUT=$(echo "pgrep -x sshd && echo SSH_RUNNING" | timeout 30 doctl apps console "$APP_ID" "$COMPONENT_NAME" 2>&1) || {
+    echo "warning: Console test failed (non-critical)"
+    echo "$CONSOLE_OUTPUT"
+}
+
+if echo "$CONSOLE_OUTPUT" | grep -q "SSH_RUNNING"; then
+    echo "✓ SSH service verified running via console"
+else
+    echo "warning: Could not verify SSH via console"
+fi
+
+# Check logs for successful startup
+echo ""
+echo "Checking app logs..."
+doctl apps logs "$APP_ID" --type=run 2>/dev/null | grep -E "(sshd|SSH|Started)" | tail -10 || true
 
 echo ""
 echo "App Platform deployment test passed (app will be cleaned up)"

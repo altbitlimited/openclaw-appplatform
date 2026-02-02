@@ -20,10 +20,11 @@ if [ -n "$DIGITALOCEAN_TOKEN" ]; then
 fi
 
 # Verify doctl is authenticated
-if ! doctl account get &>/dev/null; then
+echo "Checking doctl auth..."
+doctl account get || {
     echo "error: doctl not authenticated (set DIGITALOCEAN_TOKEN or run Install doctl action)"
     exit 1
-fi
+}
 echo "✓ doctl authenticated"
 
 if [ -z "$TS_AUTHKEY" ]; then

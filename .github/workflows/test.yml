@@ -94,6 +94,12 @@ jobs:
       - name: Load Docker image
         run: docker load -i /tmp/openclaw-test.tar
 
+      - name: Install doctl
+        if: contains(matrix.config, 'ssh')
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
       - name: Install s3cmd
         if: matrix.config == 'persistence-enabled'
         run: sudo apt-get update && sudo apt-get install -y s3cmd

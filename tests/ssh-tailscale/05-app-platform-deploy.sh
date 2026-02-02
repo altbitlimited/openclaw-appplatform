@@ -123,19 +123,39 @@ doctl apps get "$APP_ID" --format ID,DefaultIngress,ActiveDeployment.Phase 2>/de
 COMPONENT_NAME=$(doctl apps get "$APP_ID" --format Spec.Workers[0].Name --no-header 2>/dev/null || echo "$APP_NAME")
 echo "Component: $COMPONENT_NAME"
 
-# Test app via console - verify SSH is running
+# Test app via console - verify SSH is working
 echo ""
 echo "Testing app via console..."
-CONSOLE_OUTPUT=$(echo "pgrep -x sshd && echo SSH_RUNNING" | timeout 30 doctl apps console "$APP_ID" "$COMPONENT_NAME" 2>&1) || {
-    echo "warning: Console test failed (non-critical)"
-    echo "$CONSOLE_OUTPUT"
-}
 
-if echo "$CONSOLE_OUTPUT" | grep -q "SSH_RUNNING"; then
-    echo "✓ SSH service verified running via console"
-else
-    echo "warning: Could not verify SSH via console"
+# First, figure out who we are
+echo "Checking current user..."
+CURRENT_USER=$(echo "whoami" | timeout 30 doctl apps console "$APP_ID" "$COMPONENT_NAME" 2>/dev/null | tr -d '\r' | tail -1) || {
+    echo "error: Failed to get current user via console"
+    exit 1
+}
+echo "✓ Console user: $CURRENT_USER"
+
+# Check if sshd is running
+echo "Checking if sshd is running..."
+SSHD_CHECK=$(echo "pgrep -x sshd >/dev/null && echo SSHD_RUNNING || echo SSHD_NOT_RUNNING" | timeout 30 doctl apps console "$APP_ID" "$COMPONENT_NAME" 2>/dev/null | tr -d '\r' | tail -1) || true
+if [ "$SSHD_CHECK" != "SSHD_RUNNING" ]; then
+    echo "error: sshd is not running"
+    exit 1
 fi
+echo "✓ sshd is running"
+
+# Test SSH to different users
+for target_user in ubuntu openclaw root; do
+    echo "Testing SSH from $CURRENT_USER to $target_user@localhost..."
+    SSH_RESULT=$(echo "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes $target_user@localhost whoami 2>/dev/null || echo SSH_FAILED" | timeout 30 doctl apps console "$APP_ID" "$COMPONENT_NAME" 2>/dev/null | tr -d '\r' | tail -1) || SSH_RESULT="SSH_FAILED"
+
+    if [ "$SSH_RESULT" = "$target_user" ]; then
+        echo "✓ SSH to $target_user@localhost works"
+    else
+        echo "error: SSH to $target_user@localhost failed (got: $SSH_RESULT)"
+        exit 1
+    fi
+done
 
 # Check logs for successful startup
 echo ""

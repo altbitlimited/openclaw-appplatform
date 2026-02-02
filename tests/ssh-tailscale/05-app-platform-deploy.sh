@@ -158,7 +158,9 @@ DEPLOY_START=$(date +%s)
 
 while true; do
     ELAPSED=$(($(date +%s) - DEPLOY_START))
-    APP_STATUS=$(doctl apps get "$APP_ID" -o json 2>/dev/null | jq -r '.active_deployment.phase // "PENDING"')
+    APP_JSON=$(doctl apps get "$APP_ID" -o json 2>/dev/null)
+    echo "DEBUG JSON: $APP_JSON" | head -c 500
+    APP_STATUS=$(echo "$APP_JSON" | jq -r '.active_deployment.phase // "PENDING"')
     echo "  [$ELAPSED s] Status: $APP_STATUS"
 
     case "$APP_STATUS" in

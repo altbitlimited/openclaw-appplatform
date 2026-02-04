@@ -73,7 +73,7 @@ flowchart LR
 
     TS -->|serve mode| OC
     TS -->|tunnel| NG
-    BK -->|cleanup| PR
+    BK -->|cleanup| PR 
 ```
 
 | Service | Depends On | Notes |

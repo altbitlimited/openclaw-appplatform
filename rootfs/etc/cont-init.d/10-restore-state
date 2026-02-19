@@ -50,8 +50,8 @@ for i in $(seq 0 $((PATH_COUNT - 1))); do
   echo "[restore-state] Restoring: $RESTORE_PATH (snapshot $SNAPSHOT_ID)"
 
   # Run restic restore from the snapshot that contains this path
-  # Timeout after 120s per path to prevent blocking init on large restores
-  if timeout 120 restic restore "$SNAPSHOT_ID" --target / --include "$RESTORE_PATH" 2>&1; then
+  # Timeout after 60s per path to prevent blocking init on large restores
+  if timeout 60 restic restore "$SNAPSHOT_ID" --target / --include "$RESTORE_PATH" 2>&1; then
     echo "[restore-state] Completed: $RESTORE_PATH"
   else
     RESTORE_EXIT=$?

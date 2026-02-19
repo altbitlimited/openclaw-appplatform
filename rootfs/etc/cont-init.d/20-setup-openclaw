@@ -116,7 +116,7 @@ echo "[generate-config] Final config:"
 jq '.' "$CONFIG_FILE"
 
 # Install Cognee memory plugin if not already installed (non-fatal)
-COGNEE_PLUGIN_DIR="$OPENCLAW_STATE_DIR/extensions/cognee-openclaw"
+COGNEE_PLUGIN_DIR="$OPENCLAW_STATE_DIR/extensions/memory-cognee"
 if [ ! -d "$COGNEE_PLUGIN_DIR" ] || [ ! -f "$COGNEE_PLUGIN_DIR/package.json" ]; then
   echo "[generate-config] Installing Cognee memory plugin..."
   (

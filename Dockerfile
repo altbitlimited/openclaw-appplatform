@@ -120,8 +120,7 @@ RUN export SHELL=/bin/bash  && export NVM_DIR="$HOME/.nvm" \
   && pnpm setup \
   && export PNPM_HOME="/home/openclaw/.local/share/pnpm" \
   && export PATH="$PNPM_HOME:$PATH" \
-  && pnpm add -g "openclaw@${OPENCLAW_VERSION}" \
-  && openclaw plugins install @cognee/cognee-openclaw
+  && pnpm add -g "openclaw@${OPENCLAW_VERSION}"
 
 # Switch back to root for final setup
 USER root

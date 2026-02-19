@@ -8,7 +8,6 @@
     },
     "plugins": {
         "enabled": true,
-        "memory": "memory-cognee",
         "entries": {
             "whatsapp": {
                 "enabled": true

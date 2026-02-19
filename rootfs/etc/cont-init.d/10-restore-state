@@ -36,6 +36,12 @@ echo "[restore-state] Restoring $PATH_COUNT paths..."
 for i in $(seq 0 $((PATH_COUNT - 1))); do
   RESTORE_PATH=$(yq -r ".paths[$i].path" "$RESTIC_BACKUP_CONFIG_FILE")
 
+  # Skip /home restore - toolchain is in Docker image, restore is too slow on small instances
+  if [ "$RESTORE_PATH" = "/home" ]; then
+    echo "[restore-state] Skipping /home restore (toolchain already in Docker image)"
+    continue
+  fi
+
   # Ensure parent directory exists
   mkdir -p "$(dirname "$RESTORE_PATH")"
 

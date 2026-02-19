@@ -10,7 +10,7 @@ workers:
     github:
       branch: main
       deploy_on_push: true
-      repo: digitalocean-labs/openclaw-appplatform
+      repo: altbitlimited/openclaw-appplatform
     envs:
       # ============================================================
       # REQUIRED
@@ -86,6 +86,12 @@ workers:
         scope: RUN_TIME
         type: SECRET
       - key: GRADIENT_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: OPENAI_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+      - key: COGNEE_API_TOKEN
         scope: RUN_TIME
         type: SECRET
       - key: SSH_ENABLE

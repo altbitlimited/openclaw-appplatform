@@ -50,10 +50,16 @@ for i in $(seq 0 $((PATH_COUNT - 1))); do
   echo "[restore-state] Restoring: $RESTORE_PATH (snapshot $SNAPSHOT_ID)"
 
   # Run restic restore from the snapshot that contains this path
-  if restic restore "$SNAPSHOT_ID" --target / --include "$RESTORE_PATH" 2>&1; then
+  # Timeout after 120s per path to prevent blocking init on large restores
+  if timeout 120 restic restore "$SNAPSHOT_ID" --target / --include "$RESTORE_PATH" 2>&1; then
     echo "[restore-state] Completed: $RESTORE_PATH"
   else
-    echo "[restore-state] Warning: Restore may have had issues for $RESTORE_PATH (continuing)"
+    RESTORE_EXIT=$?
+    if [ "$RESTORE_EXIT" -eq 124 ]; then
+      echo "[restore-state] WARNING: Restore timed out for $RESTORE_PATH (skipping - data in Docker image)"
+    else
+      echo "[restore-state] Warning: Restore may have had issues for $RESTORE_PATH (continuing)"
+    fi
   fi
 done
 

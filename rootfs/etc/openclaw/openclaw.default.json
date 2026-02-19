@@ -24,7 +24,7 @@
             "memory-cognee": {
                 "enabled": true,
                 "config": {
-                    "baseUrl": "http://cognee-1:8000",
+                    "baseUrl": "http://159.203.34.253:8000",
                     "apiKey": "${COGNEE_API_TOKEN}",
                     "datasetName": "openclaw-memory",
                     "searchType": "GRAPH_COMPLETION",

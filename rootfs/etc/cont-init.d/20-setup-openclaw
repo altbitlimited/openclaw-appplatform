@@ -121,21 +121,26 @@ if [ ! -d "$COGNEE_PLUGIN_DIR" ] || [ ! -f "$COGNEE_PLUGIN_DIR/package.json" ]; 
   echo "[generate-config] Installing Cognee memory plugin..."
   (
     set +e  # Don't abort on errors in this subshell
+    rm -rf "$COGNEE_PLUGIN_DIR"
     mkdir -p "$COGNEE_PLUGIN_DIR"
-    PLUGIN_TMP=$(mktemp -d)
-    # Download and extract the npm package directly
-    su - openclaw -c "cd $PLUGIN_TMP && npm pack @cognee/cognee-openclaw 2>&1 && tar xzf cognee-cognee-openclaw-*.tgz -C '$COGNEE_PLUGIN_DIR' --strip-components=1 2>&1"
-    PACK_EXIT=$?
-    rm -rf "$PLUGIN_TMP"
-    if [ "$PACK_EXIT" -ne 0 ]; then
-      echo "[generate-config] WARNING: Cognee plugin download failed (exit $PACK_EXIT)"
+    # Download tarball URL from npm registry, then fetch and extract (no npm/node needed)
+    TARBALL_URL=$(curl -sL "https://registry.npmjs.org/@cognee/cognee-openclaw/latest" | jq -r '.dist.tarball // empty')
+    if [ -z "$TARBALL_URL" ]; then
+      echo "[generate-config] WARNING: Could not resolve Cognee plugin tarball URL"
+      exit 0
+    fi
+    echo "[generate-config] Downloading Cognee plugin from $TARBALL_URL"
+    curl -sL "$TARBALL_URL" | tar xzf - -C "$COGNEE_PLUGIN_DIR" --strip-components=1
+    EXTRACT_EXIT=$?
+    if [ "$EXTRACT_EXIT" -ne 0 ]; then
+      echo "[generate-config] WARNING: Cognee plugin extract failed (exit $EXTRACT_EXIT)"
       exit 0
     fi
     chown -R openclaw:openclaw "$COGNEE_PLUGIN_DIR"
-    # Install plugin dependencies
     if [ -f "$COGNEE_PLUGIN_DIR/package.json" ]; then
-      su - openclaw -c "cd '$COGNEE_PLUGIN_DIR' && npm install --production 2>&1" || true
       echo "[generate-config] Cognee plugin installed to $COGNEE_PLUGIN_DIR"
+      # Install dependencies if node/npm available via nvm
+      su - openclaw -c "export NVM_DIR=/home/openclaw/.nvm && . \$NVM_DIR/nvm.sh 2>/dev/null && cd '$COGNEE_PLUGIN_DIR' && npm install --production 2>&1" || echo "[generate-config] WARNING: npm install skipped (non-fatal)"
     else
       echo "[generate-config] WARNING: Cognee plugin package.json not found after extract"
     fi

@@ -8,6 +8,9 @@
     },
     "plugins": {
         "enabled": true,
+        "slots": {
+            "memory": "memory-cognee"
+        },
         "entries": {
             "whatsapp": {
                 "enabled": true

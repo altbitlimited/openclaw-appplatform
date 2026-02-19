@@ -21,7 +21,7 @@
             "discord": {
                 "enabled": true
             },
-            "cognee-openclaw": {
+            "memory-cognee": {
                 "enabled": true,
                 "config": {
                     "baseUrl": "http://cognee-1:8000",

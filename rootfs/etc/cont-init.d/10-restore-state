@@ -55,15 +55,18 @@ for i in $(seq 0 $((PATH_COUNT - 1))); do
 
   echo "[restore-state] Restoring: $RESTORE_PATH (snapshot $SNAPSHOT_ID)"
 
-  # Build exclude flags for restore (prevent restoring Docker-managed config dirs)
-  EXCLUDE_ARGS=""
-  if [ "$RESTORE_PATH" = "/etc" ]; then
-    EXCLUDE_ARGS="--exclude /etc/openclaw --exclude /etc/digitalocean --exclude /etc/cont-init.d --exclude /etc/services.d --exclude /etc/s6-overlay"
-  fi
-
   # Run restic restore from the snapshot that contains this path
   # Timeout after 60s per path to prevent blocking init on large restores
-  if timeout 60 restic restore "$SNAPSHOT_ID" --target / --include "$RESTORE_PATH" $EXCLUDE_ARGS 2>&1; then
+  # Note: restic --include and --exclude are mutually exclusive
+  if [ "$RESTORE_PATH" = "/etc" ]; then
+    # For /etc: snapshot only contains /etc, so use --exclude to skip Docker-managed dirs
+    RESTORE_CMD="timeout 60 restic restore $SNAPSHOT_ID --target / --exclude /etc/openclaw --exclude /etc/digitalocean --exclude /etc/cont-init.d --exclude /etc/services.d --exclude /etc/s6-overlay"
+  else
+    # For other paths: use --include to restore only the specific path
+    RESTORE_CMD="timeout 60 restic restore $SNAPSHOT_ID --target / --include $RESTORE_PATH"
+  fi
+
+  if eval "$RESTORE_CMD" 2>&1; then
     echo "[restore-state] Completed: $RESTORE_PATH"
   else
     RESTORE_EXIT=$?

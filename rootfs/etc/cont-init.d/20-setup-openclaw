@@ -10,6 +10,9 @@ persist_env_var OPENCLAW_ \
   GRADIENT_API_KEY=change-me \
   OPENAI_API_KEY="${OPENAI_API_KEY:-change-me}" \
   COGNEE_API_TOKEN="${COGNEE_API_TOKEN:-change-me}" \
+  COGNEE_EMAIL="${COGNEE_EMAIL}" \
+  COGNEE_PASSWORD="${COGNEE_PASSWORD}" \
+  COGNEE_BASE_URL="${COGNEE_BASE_URL}" \
   TAILSCALE_ENABLE="${TAILSCALE_ENABLE:-false}" \
   TS_SOCKET="${TS_SOCKET}" \
   TS_EXTRA_ARGS="${TS_EXTRA_ARGS}" \
@@ -149,6 +152,26 @@ else
   echo "[generate-config] Cognee plugin already installed at $COGNEE_PLUGIN_DIR"
 fi
 
-persist_env_var OPENCLAW_
+# Auto-login to Cognee API to get fresh JWT token (tokens expire ~24h)
+if [ -n "$COGNEE_EMAIL" ] && [ -n "$COGNEE_PASSWORD" ] && [ -n "$COGNEE_BASE_URL" ]; then
+  echo "[generate-config] Logging into Cognee API at $COGNEE_BASE_URL..."
+  COGNEE_LOGIN_RESPONSE=$(curl -s --max-time 15 -X POST "$COGNEE_BASE_URL/api/v1/auth/login" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "username=$COGNEE_EMAIL&password=$COGNEE_PASSWORD" 2>/dev/null)
+  FRESH_TOKEN=$(echo "$COGNEE_LOGIN_RESPONSE" | jq -r '.access_token // empty' 2>/dev/null)
+  if [ -n "$FRESH_TOKEN" ] && [ "$FRESH_TOKEN" != "null" ]; then
+    COGNEE_API_TOKEN="$FRESH_TOKEN"
+    echo "[generate-config] Cognee login successful, fresh token obtained"
+    # Update the config file with the fresh token
+    jq --arg token "$FRESH_TOKEN" '.plugins.entries["memory-cognee"].config.apiKey = $token' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
+  else
+    echo "[generate-config] WARNING: Cognee login failed (response: $COGNEE_LOGIN_RESPONSE)"
+    echo "[generate-config] Falling back to COGNEE_API_TOKEN env var"
+  fi
+else
+  echo "[generate-config] Cognee auto-login not configured (set COGNEE_EMAIL, COGNEE_PASSWORD, COGNEE_BASE_URL)"
+fi
+
+persist_env_var OPENCLAW_ COGNEE_API_TOKEN="$COGNEE_API_TOKEN"
 
 echo "[generate-config] Done generating config"

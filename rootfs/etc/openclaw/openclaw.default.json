@@ -21,11 +21,15 @@
             "discord": {
                 "enabled": true
             },
-            "@cognee/cognee-openclaw": {
+            "memory-cognee": {
                 "enabled": true,
                 "config": {
-                    "apiUrl": "http://cognee:8000",
-                    "apiToken": "${COGNEE_API_TOKEN}"
+                    "baseUrl": "http://cognee:8000",
+                    "apiKey": "${COGNEE_API_TOKEN}",
+                    "datasetName": "openclaw-memory",
+                    "searchType": "GRAPH_COMPLETION",
+                    "autoRecall": true,
+                    "autoIndex": true
                 }
             }
         }

@@ -115,23 +115,31 @@ jq --arg token "$OPENCLAW_GATEWAY_TOKEN" '.gateway.auth.token = $token | .gatewa
 echo "[generate-config] Final config:"
 jq '.' "$CONFIG_FILE"
 
-# Install Cognee memory plugin if not already installed
+# Install Cognee memory plugin if not already installed (non-fatal)
 COGNEE_PLUGIN_DIR="$OPENCLAW_STATE_DIR/extensions/cognee-openclaw"
-if [ ! -d "$COGNEE_PLUGIN_DIR" ]; then
+if [ ! -d "$COGNEE_PLUGIN_DIR" ] || [ ! -f "$COGNEE_PLUGIN_DIR/package.json" ]; then
   echo "[generate-config] Installing Cognee memory plugin..."
-  mkdir -p "$COGNEE_PLUGIN_DIR"
-  TMPDIR=$(mktemp -d)
-  # Download and extract the npm package directly
-  su - openclaw -c "cd $TMPDIR && npm pack @cognee/cognee-openclaw 2>/dev/null && tar xzf cognee-cognee-openclaw-*.tgz -C '$COGNEE_PLUGIN_DIR' --strip-components=1"
-  rm -rf "$TMPDIR"
-  chown -R openclaw:openclaw "$COGNEE_PLUGIN_DIR"
-  # Install plugin dependencies
-  if [ -f "$COGNEE_PLUGIN_DIR/package.json" ]; then
-    su - openclaw -c "cd '$COGNEE_PLUGIN_DIR' && npm install --production 2>/dev/null" || true
-    echo "[generate-config] Cognee plugin installed to $COGNEE_PLUGIN_DIR"
-  else
-    echo "[generate-config] WARNING: Cognee plugin package.json not found"
-  fi
+  (
+    set +e  # Don't abort on errors in this subshell
+    mkdir -p "$COGNEE_PLUGIN_DIR"
+    PLUGIN_TMP=$(mktemp -d)
+    # Download and extract the npm package directly
+    su - openclaw -c "cd $PLUGIN_TMP && npm pack @cognee/cognee-openclaw 2>&1 && tar xzf cognee-cognee-openclaw-*.tgz -C '$COGNEE_PLUGIN_DIR' --strip-components=1 2>&1"
+    PACK_EXIT=$?
+    rm -rf "$PLUGIN_TMP"
+    if [ "$PACK_EXIT" -ne 0 ]; then
+      echo "[generate-config] WARNING: Cognee plugin download failed (exit $PACK_EXIT)"
+      exit 0
+    fi
+    chown -R openclaw:openclaw "$COGNEE_PLUGIN_DIR"
+    # Install plugin dependencies
+    if [ -f "$COGNEE_PLUGIN_DIR/package.json" ]; then
+      su - openclaw -c "cd '$COGNEE_PLUGIN_DIR' && npm install --production 2>&1" || true
+      echo "[generate-config] Cognee plugin installed to $COGNEE_PLUGIN_DIR"
+    else
+      echo "[generate-config] WARNING: Cognee plugin package.json not found after extract"
+    fi
+  ) || echo "[generate-config] WARNING: Cognee plugin install failed (non-fatal)"
 else
   echo "[generate-config] Cognee plugin already installed at $COGNEE_PLUGIN_DIR"
 fi

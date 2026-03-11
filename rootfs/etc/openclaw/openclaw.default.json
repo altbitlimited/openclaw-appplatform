@@ -138,14 +138,11 @@
                     "requireMention": true
                 }
             },
-            "streaming": "partial",
-            "ackReaction": "\ud83d\udc40",
             "commands": {
                 "native": "auto"
             },
             "network": {
-                "autoSelectFamily": false,
-                "dnsResultOrder": "ipv4first"
+                "autoSelectFamily": false
             }
         }
     },

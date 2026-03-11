@@ -133,6 +133,7 @@
         "telegram": {
             "enabled": true,
             "dmPolicy": "pairing",
+            "dmScope": "per-channel-peer",
             "groups": {
                 "*": {
                     "requireMention": true

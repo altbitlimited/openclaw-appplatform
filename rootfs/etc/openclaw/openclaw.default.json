@@ -150,8 +150,7 @@
         "defaults": {
             "model": {
                 "primary": "openai/gpt-5-mini"
-            },
-            "systemPrompt": "You are a helpful AI assistant. Respond directly to the user's messages in a friendly, concise manner. Answer questions, help with tasks, and have natural conversations. Do not act as a secretary or offer multiple-choice reply options. Just respond naturally."
+            }
         }
     }
 }

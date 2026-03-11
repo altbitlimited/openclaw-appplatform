@@ -122,6 +122,15 @@ else
   echo "[generate-config] No TELEGRAM_BOT_TOKEN set, Telegram channel will not have a token configured"
 fi
 
+# Create SOUL.md in workspace if it doesn't exist (defines agent personality)
+if [ ! -f "$OPENCLAW_WORKSPACE_DIR/SOUL.md" ]; then
+  echo "[generate-config] Creating default SOUL.md in workspace"
+  cat > "$OPENCLAW_WORKSPACE_DIR/SOUL.md" <<'SOUL'
+You are a helpful AI assistant. Respond directly to the user's messages in a friendly, concise manner. Answer questions, help with tasks, and have natural conversations. Do not act as a secretary or offer multiple-choice reply options. Just respond naturally.
+SOUL
+  chown openclaw:openclaw "$OPENCLAW_WORKSPACE_DIR/SOUL.md"
+fi
+
 # Permissions applied via /etc/digitalocean/permissions.yaml
 
 echo "[generate-config] Final config:"

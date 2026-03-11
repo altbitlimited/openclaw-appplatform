@@ -13,6 +13,7 @@ persist_env_var OPENCLAW_ \
   COGNEE_EMAIL="${COGNEE_EMAIL}" \
   COGNEE_PASSWORD="${COGNEE_PASSWORD}" \
   COGNEE_BASE_URL="${COGNEE_BASE_URL}" \
+  TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN}" \
   TAILSCALE_ENABLE="${TAILSCALE_ENABLE:-false}" \
   TS_SOCKET="${TS_SOCKET}" \
   TS_EXTRA_ARGS="${TS_EXTRA_ARGS}" \
@@ -112,6 +113,14 @@ fi
 # Add gateway auth token to config
 echo "[generate-config] Adding gateway.auth.token to config"
 jq --arg token "$OPENCLAW_GATEWAY_TOKEN" '.gateway.auth.token = $token | .gateway.auth.mode = "token"' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
+
+# Configure Telegram channel if bot token is provided
+if [ -n "$TELEGRAM_BOT_TOKEN" ]; then
+  echo "[generate-config] Adding Telegram bot token to config"
+  jq --arg token "$TELEGRAM_BOT_TOKEN" '.channels.telegram.botToken = $token' "$CONFIG_FILE" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "$CONFIG_FILE"
+else
+  echo "[generate-config] No TELEGRAM_BOT_TOKEN set, Telegram channel will not have a token configured"
+fi
 
 # Permissions applied via /etc/digitalocean/permissions.yaml
 

@@ -9,6 +9,7 @@ source_env_prefix OPENCLAW_
 persist_env_var OPENCLAW_ \
   GRADIENT_API_KEY=change-me \
   OPENAI_API_KEY="${OPENAI_API_KEY:-change-me}" \
+  ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-change-me}" \
   COGNEE_API_TOKEN="${COGNEE_API_TOKEN:-change-me}" \
   COGNEE_EMAIL="${COGNEE_EMAIL}" \
   COGNEE_PASSWORD="${COGNEE_PASSWORD}" \

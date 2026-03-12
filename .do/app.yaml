@@ -77,7 +77,7 @@ workers:
       - key: ANTHROPIC_API_KEY
         scope: RUN_TIME
         type: SECRET
-        value: "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"
+        value: "CHANGE_ME"
 
       # Telegram bot
       - key: TELEGRAM_BOT_TOKEN

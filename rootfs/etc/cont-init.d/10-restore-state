@@ -45,11 +45,22 @@ for i in $(seq 0 $((PATH_COUNT - 1))); do
   # Ensure parent directory exists
   mkdir -p "$(dirname "$RESTORE_PATH")"
 
-  # Find latest snapshot for this specific path
-  SNAPSHOT_ID=$(restic snapshots --path "$RESTORE_PATH" --latest 1 --json 2>/dev/null | jq -r '.[0].id // empty')
+  # Find latest snapshot for this specific path (retry up to 3 times on failure)
+  SNAPSHOT_ID=""
+  for ATTEMPT in 1 2 3; do
+    SNAP_OUTPUT=$(restic snapshots --path "$RESTORE_PATH" --latest 1 --json 2>&1)
+    SNAP_EXIT=$?
+    if [ "$SNAP_EXIT" -eq 0 ]; then
+      SNAPSHOT_ID=$(echo "$SNAP_OUTPUT" | jq -r '.[0].id // empty')
+      break
+    else
+      echo "[restore-state] Snapshot lookup failed for $RESTORE_PATH (attempt $ATTEMPT/3): $SNAP_OUTPUT"
+      [ "$ATTEMPT" -lt 3 ] && sleep 5
+    fi
+  done
 
   if [ -z "$SNAPSHOT_ID" ]; then
-    echo "[restore-state] No snapshot found for $RESTORE_PATH, skipping"
+    echo "[restore-state] No snapshot found for $RESTORE_PATH after $ATTEMPT attempts, skipping"
     continue
   fi
 

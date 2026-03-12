@@ -1,0 +1,86 @@
+name: openclaw
+region: tor
+
+workers:
+  - name: openclaw
+    dockerfile_path: /Dockerfile
+    source_dir: /
+    instance_count: 1
+    instance_size_slug: apps-s-2vcpu-4gb
+    github:
+      branch: main
+      deploy_on_push: false
+      repo: altbitlimited/openclaw-appplatform
+    envs:
+      # Required
+      - key: OPENCLAW_GATEWAY_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+        value: "9qJUOaL7C7l27Fw8sWWpgB385gbE1ZEb"
+      - key: STABLE_HOSTNAME
+        scope: RUN_TIME
+        value: "openclaw"
+
+      # Feature flags - all disabled except UI
+      - key: ENABLE_NGROK
+        scope: RUN_TIME
+        value: "false"
+      - key: NGROK_AUTHTOKEN
+        scope: RUN_TIME
+        type: SECRET
+        value: "2Gzn3TQ9eoj9QWDxjQz5QmHVqKy_24sgZfuSpHG7nNBAMxcpR"
+      - key: TAILSCALE_ENABLE
+        scope: RUN_TIME
+        value: "true"
+      - key: TS_AUTHKEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "tskey-auth-kxxADMa8G421CNTRL-XY9hjBxNiijrxL1jrUAaijHutjaC91of"
+      - key: TS_HOSTNAME
+        scope: RUN_TIME
+        value: "openclaw"
+      - key: TS_USERSPACE
+        scope: RUN_TIME
+        value: "true"
+      - key: TS_SOCKET
+        scope: RUN_TIME
+        value: "/tmp/tailscaled.sock"
+      - key: ENABLE_SPACES
+        scope: RUN_TIME
+        value: "true"
+      - key: RESTIC_SPACES_ACCESS_KEY_ID
+        scope: RUN_TIME
+        type: SECRET
+        value: "DO801ZK8JLB8MWK6ZRKH"
+      - key: RESTIC_SPACES_SECRET_ACCESS_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "x8Zcbo4kUQ95emT7khto4Cm0Oa5GrmjdkG2uJoCG8bQ"
+      - key: RESTIC_SPACES_ENDPOINT
+        scope: RUN_TIME
+        value: "tor1.digitaloceanspaces.com"
+      - key: RESTIC_SPACES_BUCKET
+        scope: RUN_TIME
+        value: "openclawbackup"
+      - key: RESTIC_PASSWORD
+        scope: RUN_TIME
+        type: SECRET
+        value: "OUkhcapQ1qR_lJbscxuaEQy3oUl89MZ8XKu1SWEKGKY"
+      - key: ENABLE_UI
+        scope: RUN_TIME
+        value: "true"
+      - key: SSH_ENABLE
+        scope: RUN_TIME
+        value: "false"
+
+      # Anthropic
+      - key: ANTHROPIC_API_KEY
+        scope: RUN_TIME
+        type: SECRET
+        value: "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"
+
+      # Telegram bot
+      - key: TELEGRAM_BOT_TOKEN
+        scope: RUN_TIME
+        type: SECRET
+        value: "8244069845:AAEEBM8fM0MA0xj1PLY_n3dhNBFXqvNLsVA"

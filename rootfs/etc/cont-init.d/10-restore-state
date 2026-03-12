@@ -23,7 +23,7 @@ if ! restic snapshots --latest 1 2>/dev/null | grep -q 'ID'; then
   exit 0
 fi
 
-# Restore all paths in order (config has /etc first)
+# Restore all paths from backup config
 PATH_COUNT=$(yq -r '.paths | length' "$RESTIC_BACKUP_CONFIG_FILE")
 
 if [ "$PATH_COUNT" -eq 0 ]; then
@@ -35,12 +35,6 @@ echo "[restore-state] Restoring $PATH_COUNT paths..."
 
 for i in $(seq 0 $((PATH_COUNT - 1))); do
   RESTORE_PATH=$(yq -r ".paths[$i].path" "$RESTIC_BACKUP_CONFIG_FILE")
-
-  # Skip /home restore - toolchain is in Docker image, restore is too slow on small instances
-  if [ "$RESTORE_PATH" = "/home" ]; then
-    echo "[restore-state] Skipping /home restore (toolchain already in Docker image)"
-    continue
-  fi
 
   # Ensure parent directory exists
   mkdir -p "$(dirname "$RESTORE_PATH")"
@@ -66,23 +60,13 @@ for i in $(seq 0 $((PATH_COUNT - 1))); do
 
   echo "[restore-state] Restoring: $RESTORE_PATH (snapshot $SNAPSHOT_ID)"
 
-  # Run restic restore from the snapshot that contains this path
-  # Timeout after 60s per path to prevent blocking init on large restores
-  # Note: restic --include and --exclude are mutually exclusive
-  if [ "$RESTORE_PATH" = "/etc" ]; then
-    # For /etc: snapshot only contains /etc, so use --exclude to skip Docker-managed dirs
-    RESTORE_CMD="timeout 60 restic restore $SNAPSHOT_ID --target / --exclude /etc/openclaw --exclude /etc/digitalocean --exclude /etc/cont-init.d --exclude /etc/services.d --exclude /etc/s6-overlay --exclude /etc/resolv.conf --exclude /etc/hostname --exclude /etc/hosts"
-  else
-    # For other paths: use --include to restore only the specific path
-    RESTORE_CMD="timeout 60 restic restore $SNAPSHOT_ID --target / --include $RESTORE_PATH"
-  fi
-
-  if eval "$RESTORE_CMD" 2>&1; then
+  # Restore path with 60s timeout to prevent blocking init
+  if timeout 60 restic restore "$SNAPSHOT_ID" --target / --include "$RESTORE_PATH" 2>&1; then
     echo "[restore-state] Completed: $RESTORE_PATH"
   else
     RESTORE_EXIT=$?
     if [ "$RESTORE_EXIT" -eq 124 ]; then
-      echo "[restore-state] WARNING: Restore timed out for $RESTORE_PATH (skipping - data in Docker image)"
+      echo "[restore-state] WARNING: Restore timed out for $RESTORE_PATH"
     else
       echo "[restore-state] Warning: Restore may have had issues for $RESTORE_PATH (continuing)"
     fi

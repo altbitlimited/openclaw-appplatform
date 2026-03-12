@@ -15,6 +15,8 @@ paths:
       - "*.pid"
       - "*.sock"
 
+  - path: /data/tailscale
+
 # Global settings
 backup_interval_seconds: 30 # 30 seconds
 prune_interval_seconds: 3600 # 1 hour

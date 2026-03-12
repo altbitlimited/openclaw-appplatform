@@ -71,7 +71,7 @@ for i in $(seq 0 $((PATH_COUNT - 1))); do
   # Note: restic --include and --exclude are mutually exclusive
   if [ "$RESTORE_PATH" = "/etc" ]; then
     # For /etc: snapshot only contains /etc, so use --exclude to skip Docker-managed dirs
-    RESTORE_CMD="timeout 60 restic restore $SNAPSHOT_ID --target / --exclude /etc/openclaw --exclude /etc/digitalocean --exclude /etc/cont-init.d --exclude /etc/services.d --exclude /etc/s6-overlay"
+    RESTORE_CMD="timeout 60 restic restore $SNAPSHOT_ID --target / --exclude /etc/openclaw --exclude /etc/digitalocean --exclude /etc/cont-init.d --exclude /etc/services.d --exclude /etc/s6-overlay --exclude /etc/resolv.conf --exclude /etc/hostname --exclude /etc/hosts"
   else
     # For other paths: use --include to restore only the specific path
     RESTORE_CMD="timeout 60 restic restore $SNAPSHOT_ID --target / --include $RESTORE_PATH"
